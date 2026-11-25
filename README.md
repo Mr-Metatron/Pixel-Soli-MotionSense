@@ -46,7 +46,7 @@ ADB 不可用时使用 Nova 原有安全模式。停用后需要完整重启，�
 
 ## 自动构建
 
-唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；推送与 `soliVersionName` 一致的 `v*` 标签，或手动勾选 `release`，会创建 GitHub 预发布并附上 ZIP 与 SHA256。
+唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；推送与 `soliVersionName` 一致的 `v*` 标签，或手动勾选 `release`，会创建 GitHub 预发布并附上 ZIP 与 SHA256。也可在 `main` 的提交消息中加入 `[release]` 明确触发发版，便于直接通过 GitHub 连接器完成交付。
 
 工具版本固定为 JDK 17.0.17+10、Gradle 8.11.1、AGP 8.9.3、Android SDK 36、Build Tools 35.0.0。下载的唯一外部应用输入为 Oslo，固定地址和 SHA256 直接写在 [构建脚本](scripts/build.sh)。
 
