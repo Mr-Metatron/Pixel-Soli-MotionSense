@@ -13,7 +13,7 @@ on:
         type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-${{ github.ref }}
@@ -23,9 +23,12 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      version: ${{ steps.release-metadata.outputs.version }}
+      notes: ${{ steps.release-metadata.outputs.notes }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17.0.17+10'
@@ -48,17 +51,43 @@ jobs:
           path: dist/soli_motion-*.zip
           compression-level: 0
           if-no-files-found: error
-      - name: Publish prerelease
-        if: startsWith(github.ref, 'refs/tags/v') || inputs.release || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Prepare release metadata
+        id: release-metadata
         shell: bash
         run: |
           version=$(sed -n 's/^soliVersionName=//p' gradle.properties)
-          tag="v${version}"
-          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "$tag" ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "v${version}" ]]; then
             echo 'Tag must match soliVersionName in gradle.properties.' >&2
             exit 1
           fi
-          gh release create "$tag" dist/soli_motion-*.zip --target "$GITHUB_SHA" \
-            --title "Pixel Soli Motion Sense ${version}" --prerelease --notes-file .build/release-notes.md
+          {
+            echo "version=$version"
+            echo 'notes<<SOLI_RELEASE_NOTES'
+            cat .build/release-notes.md
+            echo 'SOLI_RELEASE_NOTES'
+          } >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified module from this build
+        uses: actions/download-artifact@v4
+        with:
+          name: soli_motion-${{ github.sha }}
+          path: dist
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_NOTES: ${{ needs.build.outputs.notes }}
+        shell: bash
+        run: |
+          printf '%s\n' "$RELEASE_NOTES" > release-notes.md
+          gh release create "v${RELEASE_VERSION}" "dist/soli_motion-${RELEASE_VERSION}.zip" --target "$GITHUB_SHA" \
+            --title "Pixel Soli Motion Sense ${RELEASE_VERSION}" --prerelease --notes-file release-notes.md

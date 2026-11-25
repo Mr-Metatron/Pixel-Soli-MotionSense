@@ -16,7 +16,7 @@ android {
         main {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src']
-            res.srcDirs = ['res', 'common-res']
+            res.srcDirs = ['res']
         }
     }
     compileOptions {
@@ -29,7 +29,6 @@ android {
         }
     }
     lint {
-        lintConfig file('lint.xml')
         disable 'ProtectedPermissions', 'PrivateApi'
     }
 }

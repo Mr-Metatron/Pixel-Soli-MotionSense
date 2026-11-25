@@ -1,6 +1,5 @@
 """Run the real installer/uninstaller against a temporary, mocked Android state."""
 
-import fcntl
 import json
 import os
 from pathlib import Path
@@ -19,40 +18,34 @@ args = sys.argv[1:]
 path = pathlib.Path(os.environ["MOCK_ANDROID_STATE"])
 state = json.loads(path.read_text())
 if name == "getprop":
-    print({"ro.product.device": "flame", "ro.vendor.aware_available": "false",
+    print({"ro.product.device": "flame",
            "sys.boot_completed": os.environ.get("MOCK_BOOT_READY", "1")}.get(args[0], ""))
     sys.exit(0)
 if name == "sleep":
     sys.exit(0)
 state["calls"].append([name] + args)
+path.write_text(json.dumps(state))
 if name == "settings":
-    args = args[2:]
-    action = args[0]
-    if len(args) > 2 and args[2] == os.environ.get("MOCK_FAIL_KEY"):
-        path.write_text(json.dumps(state)); sys.exit(1)
-    if action == "list":
-        print("\n".join(k + "=" + v for k, v in state["settings"].items()))
-    elif action == "get":
-        print(state["settings"].get(args[2], "null"))
-    elif action == "put":
-        state["settings"][args[2]] = args[3]
-    elif action == "delete":
-        state["settings"].pop(args[2], None)
-elif name == "pm":
+    sys.exit("Module lifecycle must leave settings alone")
+if name == "pm":
     if args[0] == "path":
         if args[-1] in state["packages"]:
             print("package:/data/app/mock/base.apk")
     elif args[0] == "install":
         if os.environ.get("MOCK_INSTALL_FAIL"):
-            path.write_text(json.dumps(state)); sys.exit(1)
+            sys.exit(1)
         if "io.github.mrmetatron.soli.adapter" not in state["packages"]:
             state["packages"].append("io.github.mrmetatron.soli.adapter")
         print("Success")
     elif args[0:2] == ["list", "packages"]:
+        if os.environ.get("MOCK_QUERY_FAIL"):
+            sys.exit(1)
         for p in state["packages"]:
             if args[-1] in p:
                 print("package:" + p)
     elif args[0] == "uninstall":
+        if os.environ.get("MOCK_UNINSTALL_FAIL"):
+            sys.exit(1)
         if args[-1] in state["packages"]:
             state["packages"].remove(args[-1])
         print("Success")
@@ -68,9 +61,7 @@ class LifecycleTest(unittest.TestCase):
         self.adb = self.root / "adb"
         self.adb.mkdir()
         self.state_file = self.root / "android.json"
-        self.initial = {"aware_enabled": "0", "doze_always_on": "0",
-                        "aware_media_apps": "example.one,example.two", "unrelated_setting": "42"}
-        self.save({"settings": dict(self.initial), "packages": [], "calls": []})
+        self.save({"packages": [], "calls": []})
         bin_dir = self.root / "bin"
         bin_dir.mkdir()
         for name in ["settings", "pm", "getprop", "sleep"]:
@@ -81,6 +72,10 @@ class LifecycleTest(unittest.TestCase):
                         MOCK_ANDROID_STATE=str(self.state_file), BOOTMODE="true", KSU="true", API="37")
         self.pending = self.adb / "soli_motion-uninstall"
         self.cleanup_script = self.adb / "service.d/soli_motion-cleanup.sh"
+
+    def tearDown(self):
+        self.assertFalse(any(call[0] == "settings" for call in self.read()["calls"]),
+                         "Installation and removal must never read or write settings")
 
     def save(self, value):
         self.state_file.write_text(json.dumps(value))
@@ -98,8 +93,8 @@ class LifecycleTest(unittest.TestCase):
         return path
 
     def install(self, path, **extra):
-        prelude = "abort() { echo \"$*\" >&2; exit 1; }; ui_print() { :; }; "
-        prelude += "set_perm() { :; }; set_perm_recursive() { :; }; . \"$MODPATH/customize.sh\""
+        prelude = 'abort() { echo "$*" >&2; exit 1; }; ui_print() { :; }; '
+        prelude += 'set_perm() { :; }; set_perm_recursive() { :; }; . "$MODPATH/customize.sh"'
         return subprocess.run(["bash", "-c", prelude], env=dict(self.env, MODPATH=str(path), **extra),
                               capture_output=True, text=True, timeout=20)
 
@@ -113,6 +108,7 @@ class LifecycleTest(unittest.TestCase):
         stage = self.stage()
         result = self.install(stage)
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((stage / "system.prop").exists(), "Only post-fs-data generates system.prop")
         active = self.adb / "modules/soli_motion"
         active.parent.mkdir(exist_ok=True)
         stage.rename(active)
@@ -120,94 +116,101 @@ class LifecycleTest(unittest.TestCase):
 
     def schedule_uninstall(self, active):
         calls_before = self.read()["calls"]
+        owned = (active / "state/adapter.owned").exists()
         result = self.run_script(active / "uninstall.sh")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.read()["calls"], calls_before, "post-fs-data must not call Android services")
-        self.assertTrue(self.cleanup_script.exists())
+        self.assertEqual(self.cleanup_script.exists(), owned)
         shutil.rmtree(active)  # KernelSU prune_modules removes the directory next.
 
-    def change_settings(self):
-        state = self.read()
-        state["settings"].update(aware_enabled="1", skip_gesture="1", doze_always_on="1")
-        self.save(state)
+    def add_legacy_snapshot(self, path):
+        (path / "state/settings").mkdir(parents=True)
+        (path / "state/settings/doze_always_on").write_text("0\n")
+        (path / "state/snapshot.complete").touch()
+        (path / "settings-keys.txt").write_text("doze_always_on\n")
 
-    def test_uninstall_restores_values_and_absence_then_removes_owned_adapter(self):
-        active = self.installed()
-        self.change_settings()
-        self.schedule_uninstall(active)
+    def test_uninstall_removes_owned_adapter_and_its_one_off_task(self):
+        self.schedule_uninstall(self.installed())
         self.assertEqual(self.run_script(self.cleanup_script).returncode, 0)
-        self.assertEqual(self.read()["settings"], self.initial)
         self.assertNotIn(ADAPTER, self.read()["packages"])
         self.assertFalse(self.pending.exists())
         self.assertFalse(self.cleanup_script.exists())
 
-    def test_upgrade_retains_first_snapshot(self):
+    def test_upgrade_preserves_ownership_without_copying_legacy_settings(self):
         active = self.installed()
-        self.change_settings()
+        self.add_legacy_snapshot(active)
+        lock = self.adb / "soli_motion-lifecycle.lock"
+        lock.touch()
         update = self.stage()
         self.assertEqual(self.install(update).returncode, 0)
+        self.assertTrue((update / "state/adapter.owned").exists())
+        self.assertFalse((update / "state/settings").exists())
+        self.assertFalse((update / "state/snapshot.complete").exists())
+        self.assertFalse(lock.exists())
         shutil.rmtree(active); update.rename(active)
         self.schedule_uninstall(active)
         self.run_script(self.cleanup_script)
-        self.assertEqual(self.read()["settings"], self.initial)
+        self.assertNotIn(ADAPTER, self.read()["packages"])
 
-    def test_reinstall_inherits_pending_snapshot_and_cancels_old_cleanup(self):
-        active = self.installed()
-        self.change_settings()
-        self.schedule_uninstall(active)
+    def test_reinstall_inherits_ownership_and_cancels_pending_cleanup(self):
+        self.schedule_uninstall(self.installed())
         update = self.stage()
         self.assertEqual(self.install(update).returncode, 0)
+        self.assertTrue((update / "state/adapter.owned").exists())
         self.assertFalse(self.cleanup_script.exists())
         self.assertFalse(self.pending.exists())
-        self.assertEqual((update / "state/settings/aware_enabled").read_text().strip(), "0")
         self.assertIn(ADAPTER, self.read()["packages"])
-        self.assertEqual(self.read()["settings"]["aware_enabled"], "1")
 
-    def test_failed_reinstall_keeps_pending_cleanup(self):
-        active = self.installed()
-        self.change_settings()
-        self.schedule_uninstall(active)
+    def test_failed_reinstall_replaces_legacy_settings_cleanup(self):
+        self.schedule_uninstall(self.installed())
+        self.add_legacy_snapshot(self.pending)
+        self.cleanup_script.write_text("settings --user 0 put secure doze_always_on 0\n")
         update = self.stage()
         self.assertNotEqual(self.install(update, MOCK_INSTALL_FAIL="1").returncode, 0)
-        self.assertTrue(self.cleanup_script.exists())
-        self.assertTrue((self.pending / "state/snapshot.complete").exists())
-        # An aborted staging directory must not masquerade as a successful reinstall.
+        self.assertEqual(self.cleanup_script.read_text(), (update / "cleanup-once.sh").read_text())
+        self.assertFalse((self.pending / "state/settings").exists())
+        self.assertFalse((self.pending / "settings-keys.txt").exists())
+        self.assertFalse((self.pending / "state/snapshot.complete").exists())
+        self.assertFalse((update / "state/adapter.owned").exists())
         self.run_script(self.cleanup_script)
-        self.assertEqual(self.read()["settings"], self.initial)
+        self.assertNotIn(ADAPTER, self.read()["packages"])
         self.assertFalse(self.pending.exists())
 
-    def test_failed_restore_retries_without_losing_snapshot(self):
-        active = self.installed()
-        self.change_settings()
-        self.schedule_uninstall(active)
-        self.run_script(self.cleanup_script, MOCK_FAIL_KEY="aware_enabled")
-        self.assertTrue(self.pending.exists())
-        self.assertTrue(self.cleanup_script.exists())
-        self.assertEqual(self.read()["settings"]["aware_enabled"], "1")
+    def test_failed_package_commands_preserve_cleanup_for_retry(self):
+        self.schedule_uninstall(self.installed())
+        for failure in ["MOCK_QUERY_FAIL", "MOCK_UNINSTALL_FAIL"]:
+            self.run_script(self.cleanup_script, **{failure: "1"})
+            self.assertTrue(self.cleanup_script.exists())
+            self.assertTrue((self.pending / "state/adapter.owned").exists())
+            self.assertIn(ADAPTER, self.read()["packages"])
         self.run_script(self.cleanup_script)
-        self.assertEqual(self.read()["settings"], self.initial)
+        self.assertNotIn(ADAPTER, self.read()["packages"])
         self.assertFalse(self.pending.exists())
 
-    def test_uninstaller_keeps_preexisting_adapter(self):
-        active = self.installed(preexisting_adapter=True)
-        self.schedule_uninstall(active)
-        self.run_script(self.cleanup_script)
+    def test_uninstaller_keeps_preexisting_adapter_without_scheduling_cleanup(self):
+        self.schedule_uninstall(self.installed(preexisting_adapter=True))
+        self.assertIn(ADAPTER, self.read()["packages"])
+        self.assertFalse(self.pending.exists())
+        # v0.1 could schedule a settings-only task even for a user-owned adapter.
+        self.add_legacy_snapshot(self.pending)
+        self.cleanup_script.parent.mkdir(exist_ok=True)
+        self.cleanup_script.write_text("settings --user 0 put secure doze_always_on 0\n")
+        self.assertNotEqual(self.install(self.stage(), MOCK_INSTALL_FAIL="1").returncode, 0)
+        self.assertFalse(self.pending.exists())
+        self.assertFalse(self.cleanup_script.exists())
         self.assertIn(ADAPTER, self.read()["packages"])
 
-    def test_cleanup_defers_while_installer_holds_lock(self):
+    def test_stale_cleanup_retains_successfully_reinstalled_adapter(self):
         active = self.installed()
-        self.change_settings()
-        self.schedule_uninstall(active)
-        before = self.read()
-        with (self.adb / "soli_motion-lifecycle.lock").open("w") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            self.run_script(self.cleanup_script)
-        self.assertEqual(self.read(), before)
-        self.assertTrue(self.cleanup_script.exists())
+        # A stale task left after an interrupted cancellation must see ownership.
+        self.assertEqual(self.run_script(active / "uninstall.sh").returncode, 0)
+        self.run_script(self.cleanup_script)
+        self.assertIn(ADAPTER, self.read()["packages"])
+        self.assertFalse(self.pending.exists())
+        self.assertFalse(self.cleanup_script.exists())
 
-    def test_incomplete_boot_keeps_work_and_does_not_contact_android_services(self):
-        active = self.installed()
-        self.schedule_uninstall(active)
+    def test_incomplete_boot_keeps_task_and_does_not_contact_android_services(self):
+        self.schedule_uninstall(self.installed())
         before = self.read()
         self.run_script(self.cleanup_script, MOCK_BOOT_READY="0")
         self.assertEqual(self.read(), before)

@@ -8,7 +8,7 @@
 | [LOS framework](https://github.com/LineageOS/android_frameworks_base/tree/afcd876af2157908814f87383678b2bd4fb6b9b6) | `afcd876af2157908814f87383678b2bd4fb6b9b6`，SystemUI、framework 方法和 SettingsLib |
 | [LOS 设备树](https://github.com/LineageOS/android_device_google_coral/tree/54913ec2b6e46e9d8d09ae21a15a3d1f7ca634dc) | `54913ec2b6e46e9d8d09ae21a15a3d1f7ca634dc`，flame/coral 共享平台及 oslo_app |
 | [Nova 启动流程](https://github.com/SukiSU-Nova/SukiSU-Nova/blob/c60f21b9e00e35e898f8d21e0612465b76b9beec/userspace/ksud/src/init_event.rs) | `c60f21b9e00e35e898f8d21e0612465b76b9beec`，post-fs-data → system.prop → metamodule mount |
-| [Nova 模块生命周期](https://github.com/SukiSU-Nova/SukiSU-Nova/blob/c60f21b9e00e35e898f8d21e0612465b76b9beec/userspace/ksud/src/module.rs) | 卸载脚本在下一次 post-fs-data 执行，因此恢复设置安排为单次启动清理 |
+| [Nova 模块生命周期](https://github.com/SukiSU-Nova/SukiSU-Nova/blob/c60f21b9e00e35e898f8d21e0612465b76b9beec/userspace/ksud/src/module.rs) | 卸载脚本在下一次 post-fs-data 执行，因此适配 APK 的卸载安排为单次启动清理 |
 
 Oslo 输入 SHA256：`5f6c2e0c908e4d726eb62543c8d7f8492ade99b1d9043baa415873093598ac54`。实际 APK 包含上游 Air DJ Java 构建内容；其关键权限检查和媒体、Clock 入口已与上述源代码核对。打包器逐项比较原 APK 的非签名 ZIP 内容，保证保留其 DEX、资源和清单。
 
@@ -18,6 +18,8 @@ Clock knownSigner 摘要来自已批准执行方案中的冻结 NikGapps Basic �
 
 项目使用一把固定签名密钥，mac XML 中以 `<package name="com.google.oslo">` 限定 `platform`，Settings 和适配 APK 使用普通独立 UID。XML 在每次启动时通过系统 Java XML API 解析、合并和复查；解析或标签设置失败时不挂载该文件。
 
-卸载阶段存在真实时序差异：Nova 调用 uninstall.sh 时 Android 服务尚未启动。实现将项目快照复制到 `/data/adb/soli_motion-uninstall`，登记 `/data/adb/service.d/soli_motion-cleanup.sh`；系统就绪后恢复、卸载归属本模块的适配 APK，再删除任务和快照。失败时保留快照供下次启动重试。日常运行没有 service.sh、巡检守护进程或在线 update.json。
+Nova 调用 `uninstall.sh` 时 Android 服务尚未启动。0.2.0 采用极简卸载方案：仅在 `adapter.owned` 表明适配 APK 归属本模块时，将归属标记放入 `/data/adb/soli_motion-uninstall` 并登记 `/data/adb/service.d/soli_motion-cleanup.sh`；系统就绪后卸载该 APK，成功后删除任务与状态目录，失败则下次启动重试。安装和卸载均不读取、保存或恢复设置，`aware_*` 与系统共用的 `doze_*` 当前值保留。日常运行没有 `service.sh`、巡检守护进程或在线 `update.json`。
+
+`ro.vendor.aware_available` 对应的 `system.prop` 仅由 `post-fs-data.sh` 每次开机生成，执行位置早于 Nova 加载属性与模块挂载。
 
 Settings、SettingsLib 和编译桩的独立构建差异、依赖版本另见 [settings/UPSTREAM.md](../settings/UPSTREAM.md)。

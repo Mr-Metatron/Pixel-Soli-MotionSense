@@ -6,7 +6,6 @@
 | --- | --- |
 | Motion Sense 页面、QS、Motion Lab、Air DJ、资源与测试 | [its-hecker/floral-motionsense-plugin，92d0051faf53acac3dfefec6597a12d587eefa73](https://github.com/its-hecker/floral-motionsense-plugin/tree/92d0051faf53acac3dfefec6597a12d587eefa73/settings) |
 | SettingsLib UI 源码与资源 | [LineageOS/android_frameworks_base，afcd876af2157908814f87383678b2bd4fb6b9b6](https://github.com/LineageOS/android_frameworks_base/tree/afcd876af2157908814f87383678b2bd4fb6b9b6/packages/SettingsLib) |
-| 上游共用设置资源 | [LineageOS/android_packages_resources_devicesettings，661fc4036da370a73e56dbd2949c18f8ab464b9b](https://github.com/LineageOS/android_packages_resources_devicesettings/tree/661fc4036da370a73e56dbd2949c18f8ab464b9b)；通过 Hecker 的 `settings/common-res` 原样引入 |
 | 编译期隐藏 API 声明 | 同一固定 framework 的 `SystemProperties`、`DeviceConfig`、`AmbientDisplayConfiguration`；声明见根目录 `stubs/`，使用 `compileOnly`，运行实现由 ROM 提供 |
 
 源码保留其 Apache-2.0 版权头；原 Pixel 动画沿用上游来源与权利说明，Motion Lab 动画来自 Hecker。许可证与总署名见仓库根目录。
@@ -37,6 +36,6 @@ Clock 的发送权限名称为 `com.android.systemui.permission.SEND_ALERT_BROAD
 
 ## 验证
 
-上游共用资源的四个旧翻译文件保留了没有默认语言条目的 `switch_bar_on`、`switch_bar_off`、`doze_settings_help_title`、`doze_settings_help_text`。已核对 Settings 业务源码、布局和这份 SettingsLib 均没有引用，也没有按名称动态查找这些资源；`lint.xml` 仅忽略这四个原始文件的 `ExtraTranslation`，保留翻译文件与其他 lint 检查。
+0.2.0 移除上游随附的 `settings/common-res`，共 121 个文件。已核对应用与 SettingsLib 的源码、清单、布局和样式，均没有引用这些资源，也没有按名称动态查找。构建仅纳入应用 `res` 与实际使用的 SettingsLib 资源；对应的 `ExtraTranslation` 例外文件 `lint.xml` 同步移除，其他 lint 规则保留。
 
 `settings/tests/LabEngineTest.java` 与六组 Lottie 资产测试来自上游。独立构建应同时完成 APK 的资源链接、Java/Kotlin 编译和 DEX 生成。Settings 页面、QS、Lab 事件、Air DJ 媒体动作、Clock 和 Doze 的实际运行结果须在 Pixel 4 上验证。

@@ -2,7 +2,7 @@
 
 为 Pixel 4（flame，兼容同平台 coral）和 LineageOS 24 准备的 Motion Sense 模块。一个 ZIP 内包含 Oslo、Hecker 原版 Settings、LSPosed 适配 APK 和 Doze RRO。
 
-**当前为开发版本，硬件功能待实机验证。** 构建和包检查会验证签名、APK 布局、Hook 边界、设置恢复、上游内容及编译桩排除；雷达手势、动画、人脸和 OTA 的结果记录在 [验证说明](docs/validation.md)。
+**当前为开发版本，硬件功能待实机验证。** 构建和包检查会验证签名、APK 布局、Hook 边界、安装与卸载、上游内容及编译桩排除；雷达手势、动画、人脸和 OTA 的结果记录在 [验证说明](docs/validation.md)。
 
 ## 下载与安装
 
@@ -20,7 +20,7 @@
 
 升级时刷入同一项目签名的新 ZIP，再完整重启。模块 ID 固定为 `soli_motion`。每次启动从当前 ROM 合并 Oslo 的签名身份映射，普通 OTA 后继续使用新的 ROM 配置。
 
-正常卸载前关闭 Motion Sense，在 Nova 中移除模块并重启。Nova 在早期启动阶段执行卸载脚本；本模块会把原设置快照交给一次性启动清理，系统就绪后恢复并自删。适配 APK 由本模块首次安装时，也会一并移除；用户事先独立安装的适配包保留。独立 Nya、Magic Mount-rs 和 LSPosed 框架继续保留。
+正常卸载前关闭 Motion Sense，在 Nova 中移除模块并重启。安装和卸载脚本均不读写系统设置：`aware_*` 偏好与共享的 `doze_*` 设置保留当前值，便于重装继续使用。由本模块首次安装的适配 APK，通过 `adapter.owned` 标记归属；Nova 执行卸载脚本后，一次性任务会等待系统就绪再移除该 APK，成功后删除自身和待清理状态目录，失败则留待下次启动重试。用户事先独立安装的适配包保留。
 
 遇到 SystemUI 连续崩溃，可通过已可用的 ADB Root 停用模块：
 
@@ -46,11 +46,11 @@ ADB 不可用时使用 Nova 原有安全模式。停用后需要完整重启，�
 
 ## 自动构建
 
-唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；推送与 `soliVersionName` 一致的 `v*` 标签，或手动勾选 `release`，会创建 GitHub 预发布并附上 ZIP 与 SHA256。也可在 `main` 的提交消息中加入 `[release]` 明确触发发版，便于直接通过 GitHub 连接器完成交付。
+唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；仅在推送与 `soliVersionName` 一致的 `v*` 标签，或手动勾选 `release` 时创建 GitHub 预发布。普通构建使用仓库只读权限；独立的 release job 持有发布所需写权限，直接下载本次构建已验证的 ZIP，并附上原构建生成的说明与 SHA256。
 
 工具版本固定为 JDK 17.0.17+10、Gradle 8.11.1、AGP 8.9.3、Android SDK 36、Build Tools 35.0.0。下载的唯一外部应用输入为 Oslo，固定地址和 SHA256 直接写在 [构建脚本](scripts/build.sh)。
 
-仓库附带固定项目开发签名，开箱即可构建。可选的单一 Secret `SOLI_SIGNING_KEY` 使用 PKCS12 文件的 Base64，alias 为 `soli`、密码为 `soli_motion`。该覆盖同时用于所有 APK、Hook 证书校验和 Oslo 身份映射。安装后的更新需要保持签名一致。
+公开 Actions 构建已配置私密签名，证书 SHA256 为 `f4d8076b6256b038ad886713dda74074c2d64e2c1a0d5b617f8a6583825e38fa`。单一 Secret `SOLI_SIGNING_KEY` 使用 PKCS12 文件的 Base64，alias 为 `soli`、密码为 `soli_motion`，同时用于所有 APK、Hook 证书校验和 Oslo 身份映射。未提供该 Secret 的本地构建使用仓库附带的开发签名；升级已有安装时需要保持同一签名。
 
 本地构建用于开发调试：
 
@@ -59,7 +59,7 @@ sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
 bash scripts/build.sh
 ```
 
-输出为 `dist/soli_motion-0.1.0.zip`。公开交付使用云端构建，用户无需安装 SDK。
+输出为 `dist/soli_motion-0.2.0.zip`。公开交付使用云端构建，用户无需安装 SDK。
 
 ## 调试与来源
 
