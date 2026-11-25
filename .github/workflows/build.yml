@@ -1,0 +1,62 @@
+name: Build Motion Sense
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Publish the current version as a GitHub prerelease'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17.0.17+10'
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '13114758'
+      - name: Install fixed Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build, test and verify the single module
+        env:
+          SOLI_SIGNING_KEY: ${{ secrets.SOLI_SIGNING_KEY }}
+        run: bash scripts/build.sh
+      - name: Upload flashable module
+        uses: actions/upload-artifact@v4
+        with:
+          name: soli_motion-${{ github.sha }}
+          path: dist/soli_motion-*.zip
+          compression-level: 0
+          if-no-files-found: error
+      - name: Publish prerelease
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version=$(sed -n 's/^soliVersionName=//p' gradle.properties)
+          tag="v${version}"
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "$tag" ]]; then
+            echo 'Tag must match soliVersionName in gradle.properties.' >&2
+            exit 1
+          fi
+          gh release create "$tag" dist/soli_motion-*.zip --target "$GITHUB_SHA" \
+            --title "Pixel Soli Motion Sense ${version}" --prerelease --notes-file .build/release-notes.md

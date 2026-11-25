@@ -1,0 +1,11 @@
+plugins {
+    id 'com.android.application' version '8.9.3' apply false
+    id 'com.android.library' version '8.9.3' apply false
+    id 'org.jetbrains.kotlin.android' version '2.1.10' apply false
+}
+
+ext.soliVersionName = providers.gradleProperty('soliVersionName').get()
+ext.soliVersionCode = providers.gradleProperty('soliVersionCode').get().toInteger()
+ext.soliCertSha256 = providers.gradleProperty('soliCertSha256')
+        .orElse(file('signing/default.cert.sha256').text.trim()).get()
+

@@ -1,0 +1,7 @@
+id=soli_motion
+name=Pixel Soli Motion Sense
+version=@VERSION@
+versionCode=@VERSION_CODE@
+author=Metatron, Hecker and contributors
+description=Pixel 4 / LineageOS 24 Motion Sense. Includes Oslo, Settings and a scoped LSPosed adapter. Enable SystemUI and Oslo in LSPosed, then reboot. Device validation pending.
+

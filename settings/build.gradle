@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.hecker.floral.motionsense'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'org.hecker.floral.motionsense'
+        minSdk 34
+        targetSdk 36
+        versionCode rootProject.ext.soliVersionCode
+        versionName rootProject.ext.soliVersionName
+    }
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            res.srcDirs = ['res', 'common-res']
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    lint {
+        lintConfig file('lint.xml')
+        disable 'ProtectedPermissions', 'PrivateApi'
+    }
+}
+
+dependencies {
+    implementation project(':settingslib')
+    compileOnly project(':stubs')
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'com.airbnb.android:lottie:5.2.0'
+}

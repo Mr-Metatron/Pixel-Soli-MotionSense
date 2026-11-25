@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frozen NikGapps Basic Google Clock signer, SHA-256 of the DER certificate. -->
+<resources>
+    <string-array name="google_clock_signers">
+        <item>f0fd6c5b410f25cb25c3b53346c8972fae30f8ee7411df910480ad6b2d60db83</item>
+    </string-array>
+</resources>

@@ -1,0 +1,18 @@
+Pixel Soli Motion Sense
+
+Module packaging and scoped LSPosed compatibility: Copyright 2026 Pixel-Soli-MotionSense contributors.
+Floral Motion Sense integration, Settings and Motion Lab: Copyright 2026 Hecker.
+AOSP and LineageOS source files retain their original copyright notices and Apache-2.0 license.
+
+The repository LICENSE covers project source, scripts and build configuration.
+Imported Google APKs and original Pixel assets retain their upstream copyright and terms.
+The Oslo APK is downloaded at build time from a fixed upstream revision and verified by SHA256.
+It is not committed to this repository. Its DEX, resources and manifest are preserved when re-signing.
+
+Settings source: its-hecker/floral-motionsense-plugin at 92d0051faf53acac3dfefec6597a12d587eefa73.
+SettingsLib source: LineageOS/android_frameworks_base at afcd876af2157908814f87383678b2bd4fb6b9b6.
+Shared settings resources: LineageOS/android_packages_resources_devicesettings at 661fc4036da370a73e56dbd2949c18f8ab464b9b.
+Original Pixel illustrations retain their upstream attribution; Motion Lab illustrations are authored for the Hecker port.
+
+Dependency versions and exact source links are recorded in docs/sources.md and settings/UPSTREAM.md.
+

@@ -1,0 +1,15 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.metatron.soli.overlay.doze'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'org.metatron.soli.overlay.doze'
+        minSdk 34
+        targetSdk 36
+        versionCode rootProject.ext.soliVersionCode
+        versionName rootProject.ext.soliVersionName
+    }
+}

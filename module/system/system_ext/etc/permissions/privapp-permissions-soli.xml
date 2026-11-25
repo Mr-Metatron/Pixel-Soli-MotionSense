@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fixed Oslo manifest and LineageOS framework afcd876; see docs/sources.md. -->
+<permissions>
+    <privapp-permissions package="com.google.oslo">
+        <permission name="android.permission.ACCESS_CONTEXT_HUB" />
+        <permission name="android.permission.CAPTURE_AUDIO_HOTWORD" />
+        <permission name="android.permission.MANAGE_SOUND_TRIGGER" />
+        <permission name="android.permission.MANAGE_USERS" />
+        <permission name="android.permission.MEDIA_CONTENT_CONTROL" />
+        <permission name="android.permission.MODIFY_AUDIO_ROUTING" />
+        <permission name="android.permission.MODIFY_PHONE_STATE" />
+        <permission name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" />
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
+        <permission name="android.permission.USER_ACTIVITY" />
+        <permission name="com.google.android.deskclock.permission.RECEIVE_ALERT_BROADCASTS" />
+        <permission name="com.google.android.dialer.permission.RECEIVE_RING_STATE" />
+        <deny-permission name="android.permission.INTERACT_ACROSS_USERS_FULL" />
+        <deny-permission name="android.permission.STATUS_BAR_SERVICE" />
+        <deny-permission name="com.android.systemui.permission.PLUGIN" />
+    </privapp-permissions>
+    <privapp-permissions package="org.hecker.floral.motionsense">
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
+    </privapp-permissions>
+</permissions>
+
