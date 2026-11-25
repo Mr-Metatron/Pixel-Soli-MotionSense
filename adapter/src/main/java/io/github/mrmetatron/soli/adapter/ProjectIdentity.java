@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 package io.github.mrmetatron.soli.adapter;
 
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
@@ -12,6 +13,15 @@ final class ProjectIdentity {
     static PackageInfo signedPackage(PackageManager packageManager, String packageName)
             throws PackageManager.NameNotFoundException {
         PackageInfo info = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES);
+        if (info.applicationInfo == null) {
+            return null;
+        }
+        int flags = info.applicationInfo.flags;
+        if (!ScopePolicy.isUnmodifiedSystemApp(
+                (flags & ApplicationInfo.FLAG_SYSTEM) != 0,
+                (flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0)) {
+            return null;
+        }
         if (info.signingInfo == null) {
             return null;
         }

@@ -62,6 +62,11 @@ final class ScopePolicy {
                 && SETTINGS.equals(uidPackages[0]);
     }
 
+    static boolean isUnmodifiedSystemApp(boolean isSystemApp, boolean isUpdatedSystemApp) {
+        // Reject /data/app installs and user-installed updates of system APKs.
+        return isSystemApp && !isUpdatedSystemApp;
+    }
+
     static boolean matchesCertificate(byte[][] currentSigners, String expectedSha256) {
         if (currentSigners == null || currentSigners.length != 1
                 || currentSigners[0] == null || expectedSha256 == null

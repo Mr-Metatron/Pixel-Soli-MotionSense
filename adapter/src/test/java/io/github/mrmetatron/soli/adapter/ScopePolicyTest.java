@@ -72,6 +72,14 @@ public final class ScopePolicyTest {
     }
 
     @Test
+    public void onlyUnmodifiedSystemAppsAreAccepted() {
+        assertTrue(ScopePolicy.isUnmodifiedSystemApp(true, false));
+        assertFalse(ScopePolicy.isUnmodifiedSystemApp(true, true));
+        assertFalse(ScopePolicy.isUnmodifiedSystemApp(false, false));
+        assertFalse(ScopePolicy.isUnmodifiedSystemApp(false, true));
+    }
+
+    @Test
     public void onlyTheSingleCurrentProjectSignerIsAccepted() {
         assertTrue(ScopePolicy.matchesCertificate(new byte[][] {CERT_FIXTURE}, FIXTURE_SHA256));
         assertTrue(ScopePolicy.matchesCertificate(new byte[][] {CERT_FIXTURE}, FIXTURE_SHA256.toUpperCase()));
