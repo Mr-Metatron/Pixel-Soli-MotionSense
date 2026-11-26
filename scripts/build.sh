@@ -11,16 +11,25 @@ for command in java javac keytool curl python3; do command -v "$command" >/dev/n
 mkdir -p .build/signing .build/downloads .build/identity/classes dist
 chmod 0700 .build/signing
 
-# One fixed project key for every APK; an optional single secret replaces the whole PKCS12.
+# Official builds must keep the installed signing identity. Local development may use the public key.
+if [[ ${SOLI_REQUIRE_RELEASE_SIGNING:-false} == true && -z ${SOLI_SIGNING_KEY:-} ]]; then
+  echo 'Release signing requires SOLI_SIGNING_KEY; refusing the public development key.' >&2
+  exit 1
+fi
 if [[ -n ${SOLI_SIGNING_KEY:-} ]]; then
   printf '%s' "$SOLI_SIGNING_KEY" | base64 --decode > .build/signing/project.p12
 else
+  echo 'Using the public development key; this build is for local development only.' >&2
   base64 --decode signing/default.p12.base64 > .build/signing/project.p12
 fi
 chmod 0600 .build/signing/project.p12
 keytool -exportcert -alias soli -keystore .build/signing/project.p12 -storepass soli_motion \
   -file .build/signing/cert.der >/dev/null
 CERT_SHA256=$(sha256sum .build/signing/cert.der | cut -d' ' -f1)
+if [[ ${SOLI_REQUIRE_RELEASE_SIGNING:-false} == true && "$CERT_SHA256" != "$(<signing/release.cert.sha256)" ]]; then
+  echo 'Release signing certificate mismatch; refusing to build a release with a different key.' >&2
+  exit 1
+fi
 python3 - <<'PY'
 from pathlib import Path
 Path('.build/signing/cert.hex').write_text(Path('.build/signing/cert.der').read_bytes().hex() + '\n')

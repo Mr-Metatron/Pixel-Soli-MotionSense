@@ -43,6 +43,7 @@ jobs:
       - name: Build, test and verify the single module
         env:
           SOLI_SIGNING_KEY: ${{ secrets.SOLI_SIGNING_KEY }}
+          SOLI_REQUIRE_RELEASE_SIGNING: ${{ github.repository == 'Mr-Metatron/Pixel-Soli-MotionSense' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release) }}
         run: bash scripts/build.sh
       - name: Upload flashable module
         uses: actions/upload-artifact@v4
