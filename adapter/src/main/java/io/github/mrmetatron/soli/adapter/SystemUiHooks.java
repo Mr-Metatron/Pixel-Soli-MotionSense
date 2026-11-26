@@ -3,7 +3,11 @@ package io.github.mrmetatron.soli.adapter;
 
 import android.content.ComponentName;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.content.res.Resources;
+
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
@@ -11,6 +15,9 @@ import de.robv.android.xposed.XposedHelpers;
 final class SystemUiHooks {
     // The module and system APKs are updated together, followed by a full reboot.
     private static volatile Boolean osloCertificateMatches;
+    // Plugin Resources can reuse SystemUI's numeric IDs. Keep lookups per asset set,
+    // and resolve again when Resources switches to a different AssetManager.
+    private static final Map<AssetManager, Integer> allowlistIds = new WeakHashMap<>();
 
     private SystemUiHooks() {}
 
@@ -31,8 +38,18 @@ final class SystemUiHooks {
                             }
                             try {
                                 Resources resources = (Resources) param.thisObject;
-                                String resource = resources.getResourceName((Integer) param.args[0]);
-                                if (ScopePolicy.ALLOWLIST_RESOURCE.equals(resource)) {
+                                int allowlistId;
+                                synchronized (allowlistIds) {
+                                    AssetManager assets = resources.getAssets();
+                                    Integer cached = allowlistIds.get(assets);
+                                    allowlistId = cached != null ? cached : resources.getIdentifier(
+                                            ScopePolicy.ALLOWLIST_RESOURCE, null, null);
+                                    // A missing resource may become available after assets are added.
+                                    if (cached == null && allowlistId != 0) {
+                                        allowlistIds.put(assets, allowlistId);
+                                    }
+                                }
+                                if (allowlistId != 0 && allowlistId == (Integer) param.args[0]) {
                                     param.setResult(ScopePolicy.appendOslo((String[]) param.getResult()));
                                     HookLog.once("SystemUI config_pluginAllowlist matched");
                                 }
