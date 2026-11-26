@@ -40,8 +40,13 @@ if [ -d "$PENDING" ]; then
   fi
 fi
 
+if [ -f "$OLD/state/oslo-permissions.granted" ]; then
+  touch "$MODPATH/state/oslo-permissions.granted"
+fi
+
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
+set_perm "$MODPATH/boot-completed.sh" 0 0 0755
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 set_perm "$MODPATH/cleanup-once.sh" 0 0 0755
 set_perm_recursive "$MODPATH/state" 0 0 0700 0600

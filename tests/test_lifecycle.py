@@ -63,6 +63,11 @@ if name == "pm":
         if args[-1] in state["packages"]:
             state["packages"].remove(args[-1])
         print("Success")
+    elif args[0] == "grant":
+        if os.environ.get("MOCK_GRANT_FAIL") == args[-1]:
+            print("Operation not allowed", file=sys.stderr)
+            sys.exit(1)
+        state.setdefault("grants", []).append(args[-2:])
 path.write_text(json.dumps(state))
 '''
 
@@ -234,6 +239,46 @@ class LifecycleTest(unittest.TestCase):
         self.run_script(self.cleanup_script, MOCK_BOOT_READY="0")
         self.assertEqual(self.read(), before)
         self.assertTrue(self.cleanup_script.exists())
+
+    def test_boot_completed_grants_oslo_runtime_permissions_once(self):
+        active = self.installed()
+        state = self.read()
+        state["packages"].append("com.google.oslo")
+        self.save(state)
+        self.assertEqual(self.run_script(active / "boot-completed.sh").returncode, 0)
+        self.assertTrue((active / "state/oslo-permissions.granted").exists())
+        self.assertEqual(
+            self.read().get("grants"),
+            [["com.google.oslo", "android.permission.RECORD_AUDIO"],
+             ["com.google.oslo", "android.permission.POST_NOTIFICATIONS"]],
+        )
+        calls_after_first = len(self.read()["calls"])
+        # Subsequent boots respect any later user revocation and do not call pm again.
+        self.assertEqual(self.run_script(active / "boot-completed.sh").returncode, 0)
+        self.assertEqual(len(self.read()["calls"]), calls_after_first)
+
+    def test_boot_completed_retries_when_oslo_missing_or_record_audio_grant_fails(self):
+        active = self.installed()
+        # Oslo not mounted yet -> marker stays absent.
+        self.assertEqual(self.run_script(active / "boot-completed.sh").returncode, 0)
+        self.assertFalse((active / "state/oslo-permissions.granted").exists())
+        state = self.read()
+        state["packages"].append("com.google.oslo")
+        self.save(state)
+        # RECORD_AUDIO failure -> marker stays absent for next-boot retry.
+        self.assertEqual(
+            self.run_script(active / "boot-completed.sh",
+                            MOCK_GRANT_FAIL="android.permission.RECORD_AUDIO").returncode,
+            0,
+        )
+        self.assertFalse((active / "state/oslo-permissions.granted").exists())
+
+    def test_upgrade_preserves_oslo_permission_grant_marker(self):
+        active = self.installed()
+        (active / "state/oslo-permissions.granted").touch()
+        update = self.stage()
+        self.assertEqual(self.install(update).returncode, 0)
+        self.assertTrue((update / "state/oslo-permissions.granted").exists())
 
 
 if __name__ == "__main__":

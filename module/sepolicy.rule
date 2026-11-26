@@ -1,0 +1,3 @@
+# Android 17 / LOS 24 isolates targetSdk 36 priv-apps into priv_app_36, while
+# Pixel 4 vendor sepolicy only allows priv_app to read ro.vendor.aware_available.
+allow priv_app_36 vendor_aware_available_prop file { read getattr map open }

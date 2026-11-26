@@ -1,6 +1,6 @@
 # 构建验证与实机状态
 
-本页区分可由源码和自动构建验证的实现，以及必须由 Pixel 4 实际运行确认的效果。当前没有已连接的测试手机，硬件验收待完成。
+本页区分可由源码和自动构建验证的实现，以及在 Pixel 4（flame，LineageOS `24.0-20261119-NIGHTLY`，SukiSU Nova `v3.0.0`，Magic Mount-rs `v4.1.12`，NyaZygisk `v2.6`，LSPosed `v2.2.1`）上的实机验证记录。
 
 ## 自动检查覆盖
 
@@ -14,13 +14,13 @@ Hook 单元测试覆盖错误签名、系统应用与更新标志、其他包/�
 
 | 项目 | 当前状态 | 观察结果 |
 | --- | --- | --- |
-| 模块安装、APK 自动升级 | 已实现，待实机验证 | Nova 安装成功，适配包显示于 LSPosed |
-| Oslo 身份和正常权限 | 已实现，待实机验证 | system priv-app、oslo_app、全局 enforce=1 |
-| SystemUI 两个插件 | 已实现，待实机验证 | allowlist 与 PLUGIN Hook 命中，Overlay/SensorManager 加载 |
-| 媒体手势与 glow | 已接入上游，待实机验证 | 挥手切歌、暂停/播放、动画一起正常 |
-| Settings、QS、Motion Lab、Air DJ | 已接入上游，待实机验证 | 开关、训练、主题、媒体目标和 Air DJ 行为 |
+| 模块安装、APK 自动升级 | 实机通过 | 需先装 Magic Mount-rs；适配包自动安装并显示于 LSPosed |
+| Oslo 身份和正常权限 | 实机通过 | system_ext priv-app、`oslo_app` 域、全局 `Enforcing`；`dalvikvm` 兼容 ART APEX 路径，`boot-completed.sh` 一次性补授 `RECORD_AUDIO` |
+| SystemUI 两个插件 | 实机通过 | allowlist 与 PLUGIN Hook 命中，`OsloOverlay` 与 `OsloSensorManager` 均 `loaded` 并接入 `OsloService` |
+| 媒体手势与 glow | 初步实机通过，待常规模式复测 | CHRE 7 端点在线、`mNanoAppFound: true`，实测抓到大量 `Flick`/`Tap`/`Reach` 事件；此前开启了 Air DJ 接管为音量/切档，关闭 Air DJ 后的常规切歌/暂停与 glow 待复测 |
+| Settings、QS、Motion Lab、Air DJ | Settings / Air DJ 已实机启动，其余待复测 | 补 `priv_app_36` 读取 `vendor_aware_available_prop` 规则后可正常读取可用性；非支持地区（如 `cn`）需临时 `pixel.oslo.allowed_override=1` 验证；Air DJ 切档与音量动作已触发 |
 | Clock、普通来电 | 已实现兼容路径，待实机验证 | 闹钟贪睡、计时器停止、来电静音与音量恢复 |
-| Doze 与伸手接近 | 已实现 RRO，待实机验证 | overlay/idmap 启用，事件实际触发屏幕行为 |
+| Doze 与伸手接近 | RRO 已启用，行为待实机验证 | `[x] org.metatron.soli.overlay.doze` 已启用，灭屏伸手亮屏待实测 |
 | 3D 人脸 | 原实现保留，待回归验证 | 普通解锁正常，记录接近时认证启动顺序 |
 | 停用、卸载、设置保留 | 已实现，待实机验证 | 重启后模块撤回，`aware_*` 与 `doze_*` 当前值保留，仅移除归属本模块的适配 APK，一次性任务自删 |
 | 官方 OTA | 已实现动态配置合并，待有 OTA 时验证 | 新槽位 Root 可用后，插件、手势、设置、人脸正常 |
@@ -40,7 +40,7 @@ adb shell dumpsys media_session
 adb shell cmd overlay list
 ```
 
-先看 LSPosed 中 `SoliMotion` 日志和模块 `state/identity.log`。确有权限错误时再收集对应时段 logcat/AVC；只按具体拒绝补充策略。当前包不包含额外 sepolicy.rule。
+先看 LSPosed 中 `SoliMotion` 日志和模块 `state/identity.log`。确有权限错误时再收集对应时段 logcat/AVC；只按具体拒绝补充策略。当前 `sepolicy.rule` 仅包含 Android 17 `priv_app_36` 读取 `vendor_aware_available_prop` 的单条规则。
 
 ## 已知范围
 

@@ -50,8 +50,13 @@ def verify(path):
         assert 'service.sh' not in names and 'update.json' not in names, 'Unexpected persistent service/update feed'
         assert 'system/system_ext/etc/selinux/system_ext_mac_permissions.xml' not in names, 'Must merge current ROM at boot'
         assert 'id=soli_motion\n' in archive.read('module.prop').decode(), 'Wrong module identity'
-        for script in ('customize.sh', 'post-fs-data.sh', 'uninstall.sh', 'cleanup-once.sh'):
+        for script in ('customize.sh', 'post-fs-data.sh', 'boot-completed.sh', 'uninstall.sh', 'cleanup-once.sh'):
             assert archive.getinfo(script).external_attr >> 16 & 0o111, f'Not executable: {script}'
+        sepolicy_lines = [line.strip() for line in archive.read('sepolicy.rule').decode().splitlines()
+                          if line.strip() and not line.strip().startswith('#')]
+        assert sepolicy_lines == [
+            'allow priv_app_36 vendor_aware_available_prop file { read getattr map open }'
+        ], f'Unexpected sepolicy.rule content: {sepolicy_lines}'
         for name in names:
             if name.endswith('.xml'):
                 ET.fromstring(archive.read(name))

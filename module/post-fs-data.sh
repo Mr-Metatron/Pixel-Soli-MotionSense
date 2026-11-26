@@ -18,8 +18,22 @@ if [ ! -r "$SOURCE" ]; then
   exit 0
 fi
 
+DALVIKVM=
+for candidate in /apex/com.android.art/bin/dalvikvm /system/bin/dalvikvm; do
+  if [ -x "$candidate" ]; then
+    DALVIKVM=$candidate
+    break
+  fi
+done
+
+if [ -z "$DALVIKVM" ]; then
+  printf '%s\n' 'No executable dalvikvm binary found; original ROM file retained.' > "$MODDIR/state/identity.log"
+  chmod 0600 "$MODDIR/state/identity.log"
+  exit 0
+fi
+
 # Use Android's XML parser, before Zygote and before Magic Mount-rs. No daemon.
-if timeout 8 /system/bin/dalvikvm -cp "$MODDIR/tools/identity.jar" \
+if timeout 8 "$DALVIKVM" -cp "$MODDIR/tools/identity.jar" \
     io.github.mrmetatron.soli.identity.Main "$SOURCE" "$TARGET" "$MODDIR/project-cert.hex" \
     > "$MODDIR/state/identity.log" 2>&1; then
   label=$(ls -Zd "$SOURCE" | awk '{print $1}')

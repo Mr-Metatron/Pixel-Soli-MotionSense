@@ -8,11 +8,11 @@
 
 从 [GitHub Releases](https://github.com/Mr-Metatron/Pixel-Soli-MotionSense/releases) 下载 `soli_motion-<版本>.zip`。开发构建位于 [Actions](https://github.com/Mr-Metatron/Pixel-Soli-MotionSense/actions/workflows/build.yml) 中每次成功运行的 Artifacts；解开下载的 Artifacts 外层压缩包后，刷入其中的模块 ZIP。
 
-运行环境为已有的 SukiSU Nova、Magic Mount-rs、独立 NyaZygisk 和 LSPosed。Nova 内置 Zygisk 保持关闭，SystemUI、Oslo 和 Motion Sense Settings 允许业务挂载；LSPosed 注入只选择前两个包。
+运行环境为已有的 SukiSU Nova、Magic Mount-rs（需先于本模块安装）、独立 NyaZygisk 和 LSPosed。Nova 内置 Zygisk 保持关闭；在 Nova 中为 SystemUI、Oslo、Motion Sense Settings（以及系统设置与桌面启动器，用于正常显示注入入口与图标）关闭「卸载模块」；LSPosed 注入只选择 SystemUI 和 Oslo。
 
-- 在 Nova 管理器安装模块 ZIP。安装器自动安装或升级内置的 LSPosed 适配 APK。
-- 在 LSPosed 中启用 **Soli Motion Sense Adapter**，只勾选 **SystemUI（com.android.systemui）** 和 **Oslo（com.google.oslo）**。
-- 完整重启，打开应用抽屉中的 **Motion Sense**，启用所需手势。地区、飞行模式、省电和用户的 Doze 开关沿用上游状态机。
+- 确认已安装并启用 **Magic Mount-rs** 元模块，再在 Nova 管理器安装本模块 ZIP。安装器自动安装或升级内置的 LSPosed 适配 APK。
+- 首次安装时，需先重启一次让 `com.google.oslo` 挂载出来；在 LSPosed 中启用 **Soli Motion Sense Adapter**，只勾选 **SystemUI（com.android.systemui）** 和 **Oslo（com.google.oslo）**，再完整重启。
+- 完整重启后，打开应用抽屉或「系统设置 → 系统」中的 **Motion Sense**，启用所需手势。地区、飞行模式、省电和用户的 Doze 开关沿用上游状态机。
 
 首次刷入前可保存 `ro.product.device`、`ro.lineage.version` 和 `/sys/fs/selinux/enforce` 的当前值。新增模块后的全局 SELinux 应继续为 Enforcing。现有可用的框架版本可继续使用。
 
@@ -39,7 +39,7 @@ ADB 不可用时使用 Nova 原有安全模式。停用后需要完整重启，�
 | SystemUI 适配 | 按资源名合并插件白名单，只对本项目签名的 Oslo 通过本地 PLUGIN 检查 |
 | Oslo 适配 | 允许自身与同项目签名的 Settings 调用；仅把所需 ALL/CURRENT 用户参数改为本用户 |
 | Settings | 复用 Hecker UI、QS、Motion Lab、Air DJ；独立构建，移除共享 system UID，补显式权限 |
-| SELinux | 当前 ROM 的 mac 文件增加仅限 com.google.oslo 的 signer 映射，复用已有 oslo_app |
+| SELinux | 当前 ROM 的 mac 文件增加仅限 com.google.oslo 的 signer 映射，复用已有 oslo_app；补一条精确规则放行 `priv_app_36` 读取 `vendor_aware_available_prop` |
 | Doze | RRO 仅启用 config_dozeWakeLockScreenSensorAvailable |
 
 工程保持现有内核、SystemUI APK、CHRE/固件及人脸实现。Hook 方法和限制见 [adapter 说明](adapter/README.md)，Settings 的最小构建改动见 [上游记录](settings/UPSTREAM.md)。
@@ -59,7 +59,7 @@ sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
 bash scripts/build.sh
 ```
 
-输出为 `dist/soli_motion-0.2.2.zip`。公开交付使用云端构建，用户无需安装 SDK。
+输出为 `dist/soli_motion-0.2.3.zip`。公开交付使用云端构建，用户无需安装 SDK。
 
 ## 调试与来源
 
