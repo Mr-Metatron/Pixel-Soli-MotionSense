@@ -51,7 +51,7 @@ set_perm_recursive "$MODPATH/state" 0 0 0700 0600
 # this side of the pipe, both for the APK input and the captured diagnostics.
 apk_size=$(stat -c %s "$MODPATH/adapter/SoliAdapter.apk") || abort '! Could not read adapter APK size.'
 install_rc=0
-install_output=$(cat "$MODPATH/adapter/SoliAdapter.apk" | pm install --user 0 -r -S "$apk_size" - 2>&1) || install_rc=$?
+install_output=$(cat "$MODPATH/adapter/SoliAdapter.apk" | pm install --user 0 -r -S "$apk_size" 2>&1) || install_rc=$?
 printf '%s\n' "$install_output" > "$MODPATH/state/install.log"
 [ "$install_rc" -eq 0 ] || {
   cat "$MODPATH/state/install.log"

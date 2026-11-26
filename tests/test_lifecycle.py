@@ -36,7 +36,11 @@ if name == "pm":
         if args[-1] in state["packages"]:
             print("package:/data/app/mock/base.apk")
     elif args[0] == "install":
-        if "-S" not in args or args[-1] != "-":
+        # makeInstallParams parses a bare '-' as an option before the input
+        # path is examined. With -S and no path, doRunInstall reads stdin.
+        if "-" in args:
+            sys.exit("java.lang.IllegalArgumentException: Unknown option -")
+        if "-S" not in args or any(arg.endswith(".apk") for arg in args):
             sys.exit("APK must be streamed rather than opened from the module directory")
         payload = sys.stdin.buffer.read()
         if len(payload) != int(args[args.index("-S") + 1]) or payload != b"mock-apk":
