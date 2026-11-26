@@ -25,21 +25,6 @@ if [ -f "$MODPATH/state/adapter.owned" ] || [ -f "$OLD/state/adapter.owned" ] ||
   owned=true
 fi
 
-# Replace a v0.1 pending task before installing, so even a failed reinstall
-# cannot leave an old task that restores shared settings on the next boot.
-if [ -d "$PENDING" ]; then
-  if [ -f "$PENDING/state/adapter.owned" ]; then
-    mkdir -p "${PENDING_SCRIPT%/*}"
-    cp "$MODPATH/cleanup-once.sh" "$PENDING_SCRIPT.tmp" && chmod 0700 "$PENDING_SCRIPT.tmp" &&
-      mv -f "$PENDING_SCRIPT.tmp" "$PENDING_SCRIPT" || abort '! Could not replace pending adapter cleanup.'
-    rm -rf "$PENDING/state/settings"
-    rm -f "$PENDING/state/snapshot.complete" "$PENDING/settings-keys.txt"
-  else
-    rm -f "$PENDING_SCRIPT"
-    rm -rf "$PENDING"
-  fi
-fi
-
 if [ -f "$OLD/state/oslo-permissions.granted" ]; then
   touch "$MODPATH/state/oslo-permissions.granted"
 fi
@@ -67,13 +52,9 @@ if [ "$owned" = true ]; then
   touch "$MODPATH/state/adapter.owned"
 fi
 
-# Cancel old cleanup only after installation succeeds. Discard v0.1 snapshots;
-# gesture preferences and shared Doze settings are left as the user set them.
+# Cancel pending adapter cleanup only after installation succeeds.
 rm -f "$PENDING_SCRIPT"
 rm -rf "$PENDING"
-rm -rf "$MODPATH/state/settings"
-rm -f "$MODPATH/state/snapshot.complete" "$MODPATH/state/secure.list" "$MODPATH/state/install.complete"
-rm -f /data/adb/soli_motion-lifecycle.lock
 
 # Recover an already present Oslo disabled by its availability-property receiver.
 if pm path com.google.oslo </dev/null 2>/dev/null | grep -q '^package:'; then
