@@ -2,6 +2,12 @@
 
 本页区分可由源码和自动构建验证的实现，以及在 Pixel 4（flame，LineageOS `24.0-20261119-NIGHTLY`，SukiSU Nova `v3.0.0`，Magic Mount-rs `v4.1.12`，NyaZygisk `v2.6`，LSPosed `v2.2.1`）上的实机验证记录。
 
+## 0.2.4 的交付范围
+
+以 `d4de87c` 的已有功能和实机修复为基线，核对执行方案中的核心与扩展功能。SystemUI 和 Oslo 的 Hook 重载、Lab Binder 协议、普通来电权限以及 Nova 启动顺序均与固定上游源码匹配。Settings、QS、训练、Glow Studio、Air DJ、Clock 和 Doze 已包含在工程中。
+
+本版补上 Motion Lab 原生 Activity 对系统栏与屏幕切口的适配。下表中的实机结果来自截至 0.2.3 的已有记录；本次没有新增手机操作或硬件验收结果，界面修复也需在设备上观察。对应源码和自动构建结果以 [Actions](https://github.com/Mr-Metatron/Pixel-Soli-MotionSense/actions/workflows/build.yml) 为准。
+
 ## 自动检查覆盖
 
 构建流程会编译三个项目 APK、重签固定 Oslo，核对四个 APK 的项目证书及包名。打包检查验证系统分区路径、模块 ID、运行时无隐藏 API/Xposed 编译桩、Oslo 非签名内容保持原样，以及每次启动动态生成 mac 身份文件。

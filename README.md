@@ -59,7 +59,7 @@ sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
 bash scripts/build.sh
 ```
 
-输出为 `dist/soli_motion-0.2.3.zip`。公开交付使用云端构建，用户无需安装 SDK。
+输出为 `dist/soli_motion-0.2.4.zip`。公开交付使用云端构建，用户无需安装 SDK。各版本的实际变更见 [版本记录](CHANGELOG.md)。
 
 ## 调试与来源
 

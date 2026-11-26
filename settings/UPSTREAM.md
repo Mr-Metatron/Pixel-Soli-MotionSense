@@ -26,6 +26,8 @@ Soong 的两个生成式功能开关以本地 `Flags` 类提供：Expressive 界
 
 增加 Launcher 查询声明，使独立 UID 下的媒体应用选择器可列出普通已安装应用。资源引用只改为合并后的 SettingsLib namespace；`UserHandle.myUserId()` 换为平台 UID 分解规则 `Process.myUid() / 100000`，其余 Settings 业务源码保持上游实现。
 
+独立应用的 `targetSdk` 为 36；根据 [Android 的边到边显示规则](https://developer.android.com/about/versions/16/behavior-changes-16#edge-to-edge)，Motion Lab 的原生 Activity 额外在滚动容器处理系统栏和屏幕切口的 WindowInsets，避免训练页和 Glow Studio 的返回按钮、底部操作被系统栏遮挡。页面内容、动画和交互沿用上游。
+
 主页面保留上游 `IA_SETTINGS` 系统设置入口，并新增 `MAIN` / `LAUNCHER` 应用抽屉入口，便于安装独立模块后直接打开 Motion Sense。
 
 Clock 的发送权限名称为 `com.android.systemui.permission.SEND_ALERT_BROADCASTS`，与固定 Oslo 接收器一致；按执行方案在 Settings 清单声明 `signature|knownSigner`，Google Clock 证书 SHA-256 位于 `res/values/clock_signers.xml`。该声明对应冻结 LOS 缺少权限定义的路径。

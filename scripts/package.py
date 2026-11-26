@@ -24,7 +24,7 @@ if not re.fullmatch(r'[0-9a-f]{64}', args.cert_sha256):
 stage = root / '.build/module'
 module_prop = (stage / 'module.prop').read_text().replace('@VERSION@', version).replace('@VERSION_CODE@', props['soliVersionCode'])
 (stage / 'module.prop').write_text(module_prop)
-for name in ('LICENSE', 'NOTICE', 'README.md'):
+for name in ('LICENSE', 'NOTICE', 'README.md', 'CHANGELOG.md'):
     shutil.copy2(root / name, stage / name)
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
 dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).strip())
@@ -58,13 +58,24 @@ with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED, compressleve
         info.compress_type = zipfile.ZIP_DEFLATED
         archive.writestr(info, path.read_bytes())
 digest = hashlib.sha256(output.read_bytes()).hexdigest()
+changelog = (root / 'CHANGELOG.md').read_text()
+heading = f'## {version}\n'
+if heading not in changelog:
+    raise SystemExit(f'Missing CHANGELOG entry for {version}')
+changes = changelog.split(heading, 1)[1].split('\n## ', 1)[0].strip()
+changes = changes.replace('(docs/validation.md)',
+                          f'(https://github.com/Mr-Metatron/Pixel-Soli-MotionSense/blob/{commit}/docs/validation.md)')
 (root / '.build/release-notes.md').write_text(f'''## Pixel Soli Motion Sense {version}
 
 单一 KSU 模块包，包含固定版 Oslo、原版 Motion Sense Settings、局部 LSPosed 适配及 Doze RRO。
 
-在 Nova 管理器刷入 ZIP 后，在 LSPosed 中仅启用 **SystemUI** 和 **Oslo**，完整重启，再打开 Motion Sense 设置。
+{changes}
 
-**状态：已完成自动构建与静态验证，待实机验证。** 手势、glow、Air DJ、Clock、来电、Doze、人脸及 OTA 的实际效果见仓库验证说明。
+### 安装与升级
+
+先确认已安装并启用 Magic Mount-rs，再在 Nova 管理器刷入 ZIP。首次安装需重启一次让 Oslo 挂载出来，然后在 LSPosed 中启用适配模块，只勾选 **SystemUI** 和 **Oslo**，再次完整重启。已有安装直接覆盖刷入并重启。
+
+**构建状态：已完成自动构建、回归检查与包内容验证。**
 
 源码提交：`{commit}`
 

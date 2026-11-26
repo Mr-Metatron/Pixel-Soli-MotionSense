@@ -14,6 +14,8 @@ Oslo 输入 SHA256：`5f6c2e0c908e4d726eb62543c8d7f8492ade99b1d9043baa4158730935
 
 Clock knownSigner 摘要来自已批准执行方案中的冻结 NikGapps Basic 检查：`f0fd6c5b410f25cb25c3b53346c8972fae30f8ee7411df910480ad6b2d60db83`。Settings 声明缺失的 `com.android.systemui.permission.SEND_ALERT_BROADCASTS`，保留 Oslo 原接收门槛；实际手机上的权限归属和授权留待验证。
 
+0.2.4 再次核对 [NikGapps 的 Google Clock 8.7 单包](https://gitlab.com/api/v4/projects/85036487/packages/generic/nikgapps-google_clock/76060331-182f7c7b3787/google_clock.zip)（ZIP SHA256：`465c8a5553c8c996ea9d9809505e1af76ad61c5aef739d7ed406adc711e2007e`）。APK 版本为 `8.7 (881990392)`，证书与上述摘要一致；已导出的 `HandleApiCalls` 接收 `SNOOZE_ALARM` 和 `DISMISS_TIMER`，无需新增 `SET_ALARM` 请求。Clock 请求 SEND 权限并声明 `signatureOrSystem` 级别的 RECEIVE 权限，与本模块的正常授权路径匹配。该 APK 仅用于核对，不纳入模块或构建输入。
+
 ## 与执行方案对应的实现细节
 
 项目使用一把固定签名密钥，mac XML 中以 `<package name="com.google.oslo">` 限定 `platform`，Settings 和适配 APK 使用普通独立 UID。XML 在每次启动时通过系统 Java XML API 解析、合并和复查；解析或标签设置失败时不挂载该文件。

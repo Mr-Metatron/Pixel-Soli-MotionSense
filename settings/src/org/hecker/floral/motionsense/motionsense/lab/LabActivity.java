@@ -5,6 +5,7 @@ import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Insets;
 import android.graphics.Typeface;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -15,6 +16,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -50,10 +52,18 @@ abstract class LabActivity extends Activity {
         getWindow().setStatusBarColor(background); getWindow().setNavigationBarColor(background);
         if (!dark) getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
                 | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setDecorFitsSystemWindows(false);
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true); scroll.setBackgroundColor(background);
+        // This standalone app targets 36; keep the original Lab controls clear of system bars.
+        scroll.setOnApplyWindowInsetsListener((view, insets) -> {
+            Insets safe = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+            view.setPadding(safe.left, safe.top, safe.right, safe.bottom);
+            return insets;
+        });
         content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(20),dp(12),dp(20),dp(24)); scroll.addView(content);
         setContentView(scroll);
+        scroll.requestApplyInsets();
         Button back = button(getString(R.string.motion_lab_back), this::finish);
         content.addView(back, new LinearLayout.LayoutParams(-1,dp(48)));
         status = text(getString(R.string.motion_lab_waiting), 14);
