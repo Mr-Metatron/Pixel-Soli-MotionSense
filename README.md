@@ -18,7 +18,7 @@
 
 ## 更新与卸载
 
-升级时刷入同一项目签名的新 ZIP，再完整重启。模块 ID 固定为 `soli_motion`。每次启动从当前 ROM 合并 Oslo 的签名身份映射，普通 OTA 后继续使用新的 ROM 配置。
+升级时刷入同一项目签名的新 ZIP，再完整重启。模块 ID 固定为 `soli_motion`。每次启动先检查当前 vendor 的 `oslo_app` 规则，再从当前 ROM 合并 Oslo 的签名身份映射；规则缺失或不兼容时跳过身份挂载，并在日志中说明原因。
 
 正常卸载前关闭 Motion Sense，在 Nova 中移除模块并重启。安装和卸载脚本均不读写系统设置：`aware_*` 偏好与共享的 `doze_*` 设置保留当前值，便于重装继续使用。由本模块首次安装的适配 APK，通过 `adapter.owned` 标记归属；Nova 执行卸载脚本后，一次性任务会等待系统就绪再移除该 APK，成功后删除自身和待清理状态目录，失败则留待下次启动重试。用户事先独立安装的适配包保留。
 
@@ -46,11 +46,15 @@ ADB 不可用时使用 Nova 原有安全模式。停用后需要完整重启，�
 
 ## 自动构建
 
-唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；推送与 `soliVersionName` 一致的 `v*` 标签、手动勾选 `release`，或在 `main` 的提交信息中明确加入 `[release]` 时创建 GitHub 预发布。普通构建使用仓库只读权限；独立的 release job 持有发布所需写权限，直接下载本次构建已验证的 ZIP，并附上原构建生成的说明与 SHA256。构建和发布均由 GitHub Actions runner 完成。
+唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；推送与 `soliVersionName` 一致的 `v*` 标签，或在 Actions 手动勾选 `release` 时创建 GitHub 预发布。普通构建使用仓库只读权限；独立的 release job 持有发布所需写权限，直接下载本次构建已验证的 ZIP，并附上原构建生成的说明与 SHA256。构建和发布均由 GitHub Actions runner 完成。
+
+功能修复提交保持当前版本号；准备发布时单独更新 `gradle.properties`、CHANGELOG 和交付文档。提交信息中的 `[release]` 不再触发发布。
 
 工具版本固定为 JDK 17.0.17+10、Gradle 8.11.1、AGP 8.9.3、Android SDK 36、Build Tools 35.0.0。下载的唯一外部应用输入为 Oslo，固定地址和 SHA256 直接写在 [构建脚本](scripts/build.sh)。
 
-公开 Actions 构建已配置私密签名，证书 SHA256 为 `f4d8076b6256b038ad886713dda74074c2d64e2c1a0d5b617f8a6583825e38fa`。单一 Secret `SOLI_SIGNING_KEY` 使用 PKCS12 文件的 Base64，alias 为 `soli`、密码为 `soli_motion`，同时用于所有 APK、Hook 证书校验和 Oslo 身份映射。未提供该 Secret 的本地构建使用仓库附带的开发签名；升级已有安装时需要保持同一签名。
+公开 Actions 构建已配置私密签名，证书 SHA256 为 `f4d8076b6256b038ad886713dda74074c2d64e2c1a0d5b617f8a6583825e38fa`，固定记录在 [release.cert.sha256](signing/release.cert.sha256)。单一 Secret `SOLI_SIGNING_KEY` 使用 PKCS12 文件的 Base64，alias 为 `soli`、密码为 `soli_motion`，同时用于所有 APK、Hook 证书校验和 Oslo 身份映射。官方仓库的全部 Actions 构建，以及任何仓库的标签或手动发布，强制要求该 Secret 和固定证书；缺失、损坏或证书不匹配时停止构建。
+
+本地与 fork 的普通开发构建可以使用仓库附带的公开开发签名，脚本会打印明确提示。发布签名检查可在本地用 `SOLI_REQUIRE_RELEASE_SIGNING=true bash scripts/build.sh` 执行；升级已有安装时需要保持同一签名。
 
 本地构建用于开发调试：
 
@@ -59,10 +63,10 @@ sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
 bash scripts/build.sh
 ```
 
-输出为 `dist/soli_motion-1.0.zip`。公开交付使用云端构建，用户无需安装 SDK。各版本的实际变更见 [版本记录](CHANGELOG.md)。
+输出为 `dist/soli_motion-1.1.zip`。公开交付使用云端构建，用户无需安装 SDK。各版本的实际变更见 [版本记录](CHANGELOG.md)。
 
 ## 调试与来源
 
-优先检查 LSPosed 内本项目日志；身份合并日志在 `/data/adb/modules/soli_motion/state/identity.log`。具体检查命令和待验证功能见 [验证说明](docs/validation.md)。
+OTA 后优先查看 `/data/adb/modules/soli_motion/state/health.log`，其中记录本次启动的域规则、身份文件和 Oslo 进程状态。详细合并原因在同目录 `identity.log`；插件问题再看 LSPosed 内本项目日志。具体检查命令、QPR／大版本复核项和待验证功能见 [验证说明](docs/validation.md)。
 
 本项目按 [执行方案](https://docs.google.com/document/d/1Cd-hJ8xmdrgYeIqemOTKAmHal8bernLzfqjb_ltqTCk) 实现；固定源码及 APK 来源见 [来源记录](docs/sources.md)。项目代码采用 Apache-2.0，上游版权和预编译组件说明保留于 [NOTICE](NOTICE)。
