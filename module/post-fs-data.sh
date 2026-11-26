@@ -3,8 +3,11 @@
 MODDIR=${0%/*}
 SOURCE=/system_ext/etc/selinux/system_ext_mac_permissions.xml
 TARGET=$MODDIR/system/system_ext/etc/selinux/system_ext_mac_permissions.xml
+SEAPP=/vendor/etc/selinux/vendor_seapp_contexts
+umask 077
 mkdir -p "$MODDIR/state" "${TARGET%/*}"
 chmod 0700 "$MODDIR/state"
+chmod 0755 "${TARGET%/*}"
 rm -f "$TARGET" "$TARGET.tmp"
 
 # Nova runs module post-fs-data scripts before system.prop loading and metamodule mount.
@@ -12,6 +15,12 @@ case "$(getprop ro.vendor.aware_available)" in
   true|1) rm -f "$MODDIR/system.prop" ;;
   *) printf '%s\n' 'ro.vendor.aware_available=true' > "$MODDIR/system.prop" ;;
 esac
+
+# Never assign platform seinfo after an OTA removes Oslo's dedicated domain rule.
+if ! awk -f "$MODDIR/oslo-domain.awk" "$SEAPP" 2>/dev/null; then
+  printf '%s\n' 'Compatible vendor oslo_app rule is missing; no identity file mounted.' > "$MODDIR/state/identity.log"
+  exit 0
+fi
 
 if [ ! -r "$SOURCE" ]; then
   printf '%s\n' 'Current ROM system_ext_mac_permissions.xml is missing; no identity file mounted.' > "$MODDIR/state/identity.log"
