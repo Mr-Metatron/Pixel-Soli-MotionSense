@@ -29,14 +29,18 @@ for module in /data/adb/modules/soli_motion /data/adb/modules_update/soli_motion
   fi
 done
 
-if ! timeout 10 pm list packages --user 0 "$ADAPTER" > "$PENDING/packages.list" 2>/dev/null; then
-  printf '%s\n' 'Could not query PackageManager; cleanup will retry next boot.'
+# Capture through pipes so Binder never receives FDs for our private log files.
+if ! packages=$(timeout 10 pm list packages --user 0 "$ADAPTER" </dev/null 2>&1); then
+  printf '%s\n' "$packages" 'Could not query PackageManager; cleanup will retry next boot.'
   exit 0
 fi
-if grep -qx "package:$ADAPTER" "$PENDING/packages.list"; then
+if printf '%s\n' "$packages" | grep -qx "package:$ADAPTER"; then
   # A reinstall may have cancelled cleanup while PackageManager was queried.
   [ -f "$PENDING/state/adapter.owned" ] || exit 0
-  if ! timeout 10 pm uninstall --user 0 "$ADAPTER" > "$PENDING/uninstall.log" 2>&1 ||
+  uninstall_rc=0
+  uninstall_output=$(timeout 10 pm uninstall --user 0 "$ADAPTER" </dev/null 2>&1) || uninstall_rc=$?
+  printf '%s\n' "$uninstall_output" > "$PENDING/uninstall.log"
+  if [ "$uninstall_rc" -ne 0 ] ||
      ! grep -q '^Success' "$PENDING/uninstall.log"; then
     printf '%s\n' 'Adapter removal failed; cleanup will retry next boot.'
     exit 0

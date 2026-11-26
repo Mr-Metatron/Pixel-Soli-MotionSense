@@ -21,7 +21,7 @@ mkdir -p "$MODPATH/state"
 # A separately installed adapter stays user-owned.
 owned=false
 if [ -f "$MODPATH/state/adapter.owned" ] || [ -f "$OLD/state/adapter.owned" ] ||
-   [ -f "$PENDING/state/adapter.owned" ] || ! pm path "$ADAPTER" 2>/dev/null | grep -q '^package:'; then
+   [ -f "$PENDING/state/adapter.owned" ] || ! pm path "$ADAPTER" </dev/null 2>/dev/null | grep -q '^package:'; then
   owned=true
 fi
 
@@ -47,9 +47,15 @@ set_perm "$MODPATH/cleanup-once.sh" 0 0 0755
 set_perm_recursive "$MODPATH/state" 0 0 0700 0600
 
 # An update with a different certificate fails normally; never uninstall to bypass it.
-pm install --user 0 -r "$MODPATH/adapter/SoliAdapter.apk" > "$MODPATH/state/install.log" 2>&1 || {
+# Binder passes standard FDs to system_server; keep module-private files on
+# this side of the pipe, both for the APK input and the captured diagnostics.
+apk_size=$(stat -c %s "$MODPATH/adapter/SoliAdapter.apk") || abort '! Could not read adapter APK size.'
+install_rc=0
+install_output=$(cat "$MODPATH/adapter/SoliAdapter.apk" | pm install --user 0 -r -S "$apk_size" - 2>&1) || install_rc=$?
+printf '%s\n' "$install_output" > "$MODPATH/state/install.log"
+[ "$install_rc" -eq 0 ] || {
   cat "$MODPATH/state/install.log"
-  abort '! Adapter installation failed; keep the same project signing key.'
+  abort '! Adapter installation failed; see PackageManager output above.'
 }
 grep -q '^Success' "$MODPATH/state/install.log" || abort '! Package manager did not confirm installation.'
 if [ "$owned" = true ]; then
@@ -65,8 +71,8 @@ rm -f "$MODPATH/state/snapshot.complete" "$MODPATH/state/secure.list" "$MODPATH/
 rm -f /data/adb/soli_motion-lifecycle.lock
 
 # Recover an already present Oslo disabled by its availability-property receiver.
-if pm path com.google.oslo 2>/dev/null | grep -q '^package:'; then
-  pm enable --user 0 com.google.oslo >/dev/null 2>&1
+if pm path com.google.oslo </dev/null 2>/dev/null | grep -q '^package:'; then
+  pm enable --user 0 com.google.oslo </dev/null >/dev/null 2>&1
 fi
 ui_print '- Adapter installed. Enable only SystemUI and Oslo in LSPosed.'
 ui_print '- Reboot, then open Motion Sense and enable the desired gestures.'

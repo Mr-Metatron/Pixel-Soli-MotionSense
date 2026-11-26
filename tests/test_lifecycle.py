@@ -12,7 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 ADAPTER = "io.github.mrmetatron.soli.adapter"
 MOCK = r'''#!/usr/bin/env python3
-import json, os, pathlib, sys
+import json, os, pathlib, stat, sys
 name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 path = pathlib.Path(os.environ["MOCK_ANDROID_STATE"])
@@ -28,11 +28,21 @@ path.write_text(json.dumps(state))
 if name == "settings":
     sys.exit("Module lifecycle must leave settings alone")
 if name == "pm":
+    # Binder passes all three standard FDs to system_server. Module-private
+    # files cannot be passed directly; pipes and /dev/null are usable here.
+    if any(stat.S_ISREG(os.fstat(fd).st_mode) for fd in (0, 1, 2)):
+        sys.exit("cmd: Failure calling service package: Failed transaction (2147483646)")
     if args[0] == "path":
         if args[-1] in state["packages"]:
             print("package:/data/app/mock/base.apk")
     elif args[0] == "install":
+        if "-S" not in args or args[-1] != "-":
+            sys.exit("APK must be streamed rather than opened from the module directory")
+        payload = sys.stdin.buffer.read()
+        if len(payload) != int(args[args.index("-S") + 1]) or payload != b"mock-apk":
+            sys.exit("APK stream or declared size differs from the source")
         if os.environ.get("MOCK_INSTALL_FAIL"):
+            print("Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match]", file=sys.stderr)
             sys.exit(1)
         if "io.github.mrmetatron.soli.adapter" not in state["packages"]:
             state["packages"].append("io.github.mrmetatron.soli.adapter")
@@ -95,12 +105,14 @@ class LifecycleTest(unittest.TestCase):
     def install(self, path, **extra):
         prelude = 'abort() { echo "$*" >&2; exit 1; }; ui_print() { :; }; '
         prelude += 'set_perm() { :; }; set_perm_recursive() { :; }; . "$MODPATH/customize.sh"'
-        return subprocess.run(["bash", "-c", prelude], env=dict(self.env, MODPATH=str(path), **extra),
-                              capture_output=True, text=True, timeout=20)
+        with (path / "customize.sh").open("rb") as private_stdin:
+            return subprocess.run(["bash", "-c", prelude], env=dict(self.env, MODPATH=str(path), **extra),
+                                  stdin=private_stdin, capture_output=True, text=True, timeout=20)
 
     def run_script(self, path, **extra):
-        return subprocess.run(["bash", str(path)], env=dict(self.env, **extra),
-                              capture_output=True, text=True, timeout=20)
+        with path.open("rb") as private_stdin:
+            return subprocess.run(["bash", str(path)], env=dict(self.env, **extra),
+                                  stdin=private_stdin, capture_output=True, text=True, timeout=20)
 
     def installed(self, preexisting_adapter=False):
         if preexisting_adapter:
@@ -166,7 +178,10 @@ class LifecycleTest(unittest.TestCase):
         self.add_legacy_snapshot(self.pending)
         self.cleanup_script.write_text("settings --user 0 put secure doze_always_on 0\n")
         update = self.stage()
-        self.assertNotEqual(self.install(update, MOCK_INSTALL_FAIL="1").returncode, 0)
+        result = self.install(update, MOCK_INSTALL_FAIL="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("INSTALL_FAILED_UPDATE_INCOMPATIBLE", result.stdout)
+        self.assertIn("INSTALL_FAILED_UPDATE_INCOMPATIBLE", (update / "state/install.log").read_text())
         self.assertEqual(self.cleanup_script.read_text(), (update / "cleanup-once.sh").read_text())
         self.assertFalse((self.pending / "state/settings").exists())
         self.assertFalse((self.pending / "settings-keys.txt").exists())
