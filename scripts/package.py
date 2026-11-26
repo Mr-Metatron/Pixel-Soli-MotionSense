@@ -17,7 +17,7 @@ args = parser.parse_args()
 props = dict(line.split('=', 1) for line in (root / 'gradle.properties').read_text().splitlines()
              if '=' in line and not line.startswith('#'))
 version = props['soliVersionName']
-if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?', version):
+if not re.fullmatch(r'[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][A-Za-z0-9.-]+)?', version):
     raise SystemExit('Invalid module version')
 if not re.fullmatch(r'[0-9a-f]{64}', args.cert_sha256):
     raise SystemExit('Expected SHA256 signing certificate digest')

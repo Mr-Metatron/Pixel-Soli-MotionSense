@@ -46,7 +46,7 @@ ADB 不可用时使用 Nova 原有安全模式。停用后需要完整重启，�
 
 ## 自动构建
 
-唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；仅在推送与 `soliVersionName` 一致的 `v*` 标签，或手动勾选 `release` 时创建 GitHub 预发布。普通构建使用仓库只读权限；独立的 release job 持有发布所需写权限，直接下载本次构建已验证的 ZIP，并附上原构建生成的说明与 SHA256。
+唯一工作流为 [build.yml](.github/workflows/build.yml)。每次 push 或手动运行自动测试、构建、统一签名并上传一个模块 ZIP；推送与 `soliVersionName` 一致的 `v*` 标签、手动勾选 `release`，或在 `main` 的提交信息中明确加入 `[release]` 时创建 GitHub 预发布。普通构建使用仓库只读权限；独立的 release job 持有发布所需写权限，直接下载本次构建已验证的 ZIP，并附上原构建生成的说明与 SHA256。构建和发布均由 GitHub Actions runner 完成。
 
 工具版本固定为 JDK 17.0.17+10、Gradle 8.11.1、AGP 8.9.3、Android SDK 36、Build Tools 35.0.0。下载的唯一外部应用输入为 Oslo，固定地址和 SHA256 直接写在 [构建脚本](scripts/build.sh)。
 
@@ -59,7 +59,7 @@ sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
 bash scripts/build.sh
 ```
 
-输出为 `dist/soli_motion-0.2.4.zip`。公开交付使用云端构建，用户无需安装 SDK。各版本的实际变更见 [版本记录](CHANGELOG.md)。
+输出为 `dist/soli_motion-1.0.zip`。公开交付使用云端构建，用户无需安装 SDK。各版本的实际变更见 [版本记录](CHANGELOG.md)。
 
 ## 调试与来源
 

@@ -2,7 +2,7 @@
 
 本页区分可由源码和自动构建验证的实现，以及在 Pixel 4（flame，LineageOS `24.0-20261119-NIGHTLY`，SukiSU Nova `v3.0.0`，Magic Mount-rs `v4.1.12`，NyaZygisk `v2.6`，LSPosed `v2.2.1`）上的实机验证记录。
 
-## 0.2.4 的交付范围
+## 1.0 的交付范围
 
 以 `d4de87c` 的已有功能和实机修复为基线，核对执行方案中的核心与扩展功能。SystemUI 和 Oslo 的 Hook 重载、Lab Binder 协议、普通来电权限以及 Nova 启动顺序均与固定上游源码匹配。Settings、QS、训练、Glow Studio、Air DJ、Clock 和 Doze 已包含在工程中。
 
