@@ -11,10 +11,21 @@ chmod 0755 "${TARGET%/*}"
 rm -f "$TARGET" "$TARGET.tmp"
 
 # Nova runs module post-fs-data scripts before system.prop loading and metamodule mount.
-case "$(getprop ro.vendor.aware_available)" in
-  true|1) rm -f "$MODDIR/system.prop" ;;
-  *) printf '%s\n' 'ro.vendor.aware_available=true' > "$MODDIR/system.prop" ;;
-esac
+{
+  case "$(getprop ro.vendor.aware_available)" in
+    true|1) ;;
+    *) printf '%s\n' 'ro.vendor.aware_available=true' ;;
+  esac
+  case "$(getprop pixel.oslo.allowed_override)" in
+    1) ;;
+    *) printf '%s\n' 'pixel.oslo.allowed_override=1' ;;
+  esac
+} > "$MODDIR/system.prop.tmp"
+if [ -s "$MODDIR/system.prop.tmp" ]; then
+  mv -f "$MODDIR/system.prop.tmp" "$MODDIR/system.prop"
+else
+  rm -f "$MODDIR/system.prop" "$MODDIR/system.prop.tmp"
+fi
 
 # Never assign platform seinfo after an OTA removes Oslo's dedicated domain rule.
 if ! awk -f "$MODDIR/oslo-domain.awk" "$SEAPP" 2>/dev/null; then

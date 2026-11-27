@@ -12,7 +12,7 @@
 
 - 确认已安装并启用 **Magic Mount-rs** 元模块，再在 Nova 管理器安装本模块 ZIP。安装器自动安装或升级内置的 LSPosed 适配 APK。
 - 首次安装时，需先重启一次让 `com.google.oslo` 挂载出来；在 LSPosed 中启用 **Soli Motion Sense Adapter**，只勾选 **SystemUI（com.android.systemui）** 和 **Oslo（com.google.oslo）**，再完整重启。
-- 完整重启后，打开应用抽屉或「系统设置 → 系统」中的 **Motion Sense**，启用所需手势。地区、飞行模式、省电和用户的 Doze 开关沿用上游状态机。
+- 完整重启后，打开应用抽屉或「系统设置 → 系统」中的 **Motion Sense**，启用所需手势。模块默认在开机阶段通过 `system.prop` 启用地区覆写（`pixel.oslo.allowed_override=1`），飞行模式、省电和用户的 Doze 开关沿用上游状态机。
 
 首次刷入前可保存 `ro.product.device`、`ro.lineage.version` 和 `/sys/fs/selinux/enforce` 的当前值。新增模块后的全局 SELinux 应继续为 Enforcing。现有可用的框架版本可继续使用。
 

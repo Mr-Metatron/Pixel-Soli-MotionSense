@@ -22,7 +22,7 @@ Clock knownSigner 摘要来自已批准执行方案中的冻结 NikGapps Basic �
 
 Nova 调用 `uninstall.sh` 时 Android 服务尚未启动。0.2.0 采用极简卸载方案：仅在 `adapter.owned` 表明适配 APK 归属本模块时，将归属标记放入 `/data/adb/soli_motion-uninstall` 并登记 `/data/adb/service.d/soli_motion-cleanup.sh`；系统就绪后卸载该 APK，成功后删除任务与状态目录，失败则下次启动重试。安装和卸载均不读取、保存或恢复设置，`aware_*` 与系统共用的 `doze_*` 当前值保留。日常运行没有 `service.sh`、巡检守护进程或在线 `update.json`。
 
-`ro.vendor.aware_available` 对应的 `system.prop` 仅由 `post-fs-data.sh` 每次开机生成，执行位置早于 Nova 加载属性与模块挂载。
+`ro.vendor.aware_available` 与 `pixel.oslo.allowed_override=1` 对应的 `system.prop` 仅由 `post-fs-data.sh` 每次开机按需生成，执行位置早于 Nova 加载属性与模块挂载。
 
 Settings、SettingsLib 和编译桩的独立构建差异、依赖版本另见 [settings/UPSTREAM.md](../settings/UPSTREAM.md)。
 

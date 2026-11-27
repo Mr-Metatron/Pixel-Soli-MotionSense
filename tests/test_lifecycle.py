@@ -19,7 +19,8 @@ path = pathlib.Path(os.environ["MOCK_ANDROID_STATE"])
 state = json.loads(path.read_text())
 if name == "getprop":
     print({"ro.product.device": "flame",
-           "ro.vendor.aware_available": "true",
+           "ro.vendor.aware_available": os.environ.get("MOCK_AWARE_AVAILABLE", "true"),
+           "pixel.oslo.allowed_override": os.environ.get("MOCK_ALLOWED_OVERRIDE", ""),
            "sys.boot_completed": os.environ.get("MOCK_BOOT_READY", "1")}.get(args[0], ""))
     sys.exit(0)
 if name == "sleep":
@@ -379,6 +380,30 @@ class LifecycleTest(unittest.TestCase):
         self.assertIn("oslo_process=not_running (may not have started yet)", health.read_text())
         self.run_script(active / "boot-completed.sh", MOCK_PS_FAIL="1")
         self.assertIn("oslo_process=query_failed", health.read_text())
+
+    def test_post_fs_data_generates_system_prop_for_allowed_override(self):
+        active = self.installed()
+        prop_file = active / "system.prop"
+        tmp_prop_file = active / "system.prop.tmp"
+
+        self.assertEqual(self.run_script(active / "post-fs-data.sh").returncode, 0)
+        self.assertEqual(prop_file.read_text(), "pixel.oslo.allowed_override=1\n")
+        self.assertFalse(tmp_prop_file.exists())
+
+        self.assertEqual(
+            self.run_script(active / "post-fs-data.sh", MOCK_AWARE_AVAILABLE="false").returncode,
+            0,
+        )
+        self.assertEqual(
+            prop_file.read_text(),
+            "ro.vendor.aware_available=true\npixel.oslo.allowed_override=1\n",
+        )
+
+        self.assertEqual(
+            self.run_script(active / "post-fs-data.sh", MOCK_ALLOWED_OVERRIDE="1").returncode,
+            0,
+        )
+        self.assertFalse(prop_file.exists())
 
 
 if __name__ == "__main__":
